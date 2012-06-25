@@ -8,9 +8,9 @@
 
 import math
 
-def distance(origin, destination):
-    lat1, lon1 = origin
-    lat2, lon2 = destination
+def distance(lat1, lat2, lon1, lon2):
+    #lat1, lon1 = origin
+    #lat2, lon2 = destination
     radius = 6371 # km
 
     dlat = math.radians(lat2-lat1)
@@ -18,9 +18,9 @@ def distance(origin, destination):
     a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) \
         * math.cos(math.radians(lat2)) * math.sin(dlon/2) * math.sin(dlon/2)
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    d = radius * c
+    distance = radius * c
 
-    return d
+    return distance
 	
 
 def calcLong(lon1, lon2, lat1, lat2):

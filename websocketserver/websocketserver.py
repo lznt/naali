@@ -2,6 +2,7 @@ import math
 import random
 import json
 import socket #just for exception handling for restarts here
+import time
 
 import ws4py.server.geventserver
 from ws4py.websocket import WebSocket
@@ -12,6 +13,7 @@ from PythonQt.QtGui import QQuaternion as Quat
 
 import haversine
 import tundra
+import move
 
 clients = set()
 connections = dict()
@@ -54,13 +56,13 @@ def update(t):
 	
 	if server is not None:
 		#server.next()
-		server._stopped_event.wait(timeout=0.0001)
+		server._stopped_event.wait(timeout=2.0001)
 		#print '.',
 		#def on_exit(self):
 		# Need to figure something out what to do and how
 		if GraffitiWebSocket.walk == True:
-			
 			moveUpdate(t)
+
 			
 def sendAll(data):
 	for client in clients:
@@ -134,37 +136,49 @@ def onEntityRemoved(entity, changeType):
     sendAll(['removeEntity', {'id': entity.id}])
 
 def moveUpdate(t):
-	speed = 0.6
-	time = t
-	lats = speed * time * GraffitiWebSocket.ratioLat
-	lons = speed * time * GraffitiWebSocket.ratioLon
-	#GraffitiWebSocket.relativeLat = GraffitiWebSocket.relativeLat - (speed * time)
-	#GraffitiWebSocket.relativeLon = GraffitiWebSocket.relativeLon - (speed * time)
-	
-	avatarEntity = tundra.Scene().MainCameraScene().GetEntityByName("Avatar1").get()# + str(msg['data']['user'])).get() 
-	
-	yy = avatarEntity.placeable.Position().y()
-	xx = avatarEntity.placeable.Position().x()
-	zz = avatarEntity.placeable.Position().z()
-	
-	summedPositionx = xx + lats
-	summedPositionz = zz + lons
-	
-	GraffitiWebSocket.totalLat = GraffitiWebSocket.totalLat + lats
-	GraffitiWebSocket.totalLon = GraffitiWebSocket.totalLon + lons
-	#print summedPositionz, summedPositionx
-	avatarEntity.placeable.SetPosition(summedPositionx,yy,summedPositionz)
-	
-	if GraffitiWebSocket.totalLat > GraffitiWebSocket.relativeLat or GraffitiWebSocket.totalLon > GraffitiWebSocket.relativeLon:
-		GraffitiWebSocket.walk = False
-		#walking = False
-		GraffitiWebSocket.totalLon = 0 
-		GraffitiWebSocket.totalLat = 0
-		avatarEntity.animationcontroller.DisableAllAnimations()
-		
+	if GraffitiWebSocket.relativeLat > 0:
+		speed = 1.6
+		time = t
+		lats = speed * time * GraffitiWebSocket.ratioLat
+		lons = speed * time * GraffitiWebSocket.ratioLon
+		avatarEntity = tundra.Scene().MainCameraScene().GetEntityByName("Bot").get()# + str(msg['data']['user'])).get()
 
+		yy = avatarEntity.placeable.Position().y()
+		xx = avatarEntity.placeable.Position().x()
+		zz = avatarEntity.placeable.Position().z()
+		
+		if GraffitiWebSocket.orientation == "ne":
+			summedPositionz = zz + lats
+			summedPositionx = xx + lons
+		elif GraffitiWebSocket.orientation == "sw":
+			summedPositionz = zz - lats
+			summedPositionx = xx - lons
+		elif GraffitiWebSocket.orientation == "nw":
+			summedPositionz = zz + lats
+			summedPositionx = xx - lons
+		elif GraffitiWebSocket.orientation =="se":
+			summedPositionz = zz - lats
+			summedPositionx = xx + lons
+		
+		GraffitiWebSocket.totalLat = GraffitiWebSocket.totalLat + lats
+		GraffitiWebSocket.totalLon = GraffitiWebSocket.totalLon + lons	
 		
 		
+		print GraffitiWebSocket.totalLat, GraffitiWebSocket.totalLon, GraffitiWebSocket.relativeLat, GraffitiWebSocket.relativeLon
+		#avatarEntity.animationcontroller.SetAnimationSpeed(GraffitiWebSocket.walkAnimName, 0.60)
+		#avatarEntity.animationcontroller.EnableAnimation(GraffitiWebSocket.walkAnimName , True, 0.25, True)
+		avatarEntity.placeable.SetPosition(summedPositionx,yy,summedPositionz)
+
+		#Muista kokeilla and ehdolla
+		#
+		if GraffitiWebSocket.totalLat > GraffitiWebSocket.relativeLat or GraffitiWebSocket.totalLon > GraffitiWebSocket.relativeLon:
+			GraffitiWebSocket.walk = False
+			GraffitiWebSocket.totalLon = 0 
+			GraffitiWebSocket.totalLat = 0
+			avatarEntity.animationcontroller.DisableAllAnimations()
+			print 'Reached end of moveUpdate()'
+		
+			
 class GraffitiWebSocket(WebSocket):
 	
 	walk = False
@@ -174,38 +188,45 @@ class GraffitiWebSocket(WebSocket):
 	totalLat = 0
 	totalLon = 0
 	walkAnimName = u'Walk'
-	
+	animList = [walkAnimName]
+	latitudeInMeters = 0
+	longitudeInMeters = 0
+	ratioLat = 0
+	ratioLon = 0
+	orientation = ""
 	
 	def opened(self):
 		print "Websocket client connected"
 		self.send('Websocket client connected')
-        
+
 	def received_message(self, message):
 		"""
 		Automatically sends back the provided ``message`` to
 		its originating endpoint.
 		"""
 
-		#lat1 = 65.012124
-		#lon1 = 25.473395
-		lat1 = 65.058325
-		lon1 = 25.468476
+		lat1 = 65.012124
+		lon1 = 
+		#lat1 = 65.058325
+		#lon1 = 25.468476
 		
 		def add():
 			#ask about the usage of addMobileUser thru websocket echo test
 			#Animation is still broken, testing testing..
 			
 			print "Player Added"
-			avatarEntity =  tundra.Scene().MainCameraScene().CreateEntity(scene.NextFreeId(), ["EC_Placeable", "EC_Mesh", "EC_RigidBody", "EC_Avatar"]).get()
+			avatarEntity =  tundra.Scene().MainCameraScene().CreateEntity(scene.NextFreeId(), ["EC_Placeable", "EC_AnimationController", "EC_Mesh", "EC_RigidBody", "EC_Avatar", "EC_Script"]).get()
 			avatarEntity.SetTemporary(True)
-			avatarEntity.placeable.visible = False
+			avatarEntity.placeable.visible = True
 			avatarEntity.SetName("Bot") #+ str(msg['data']['user']))
-			avatarEntity.rigidbody.mass = 10
+			avatarEntity.rigidbody.mass = 0
 			#avatarEntity = tundra.Scene().MainCameraScene().GetEntityByName('Avatar1').get()
+			#Script = avatarEntity.GetOrCreateComponent("EC_Script")
 			avatarEntity.placeable.SetPosition(0, -4, 0)	
-			#avatarurl = "default_avatar.avatar"
-			#appearance.appearanceRef = avatarurl
+			avatarEntity.avatar.appearanceRef.setRef("default_avatar.avatar")
+			#avatarEntity.appearance.appearanceRef = avatarurl
 			
+			#avatarEntity.script.className = "move.py"
 			
 			#Approx 0 on oulu3d
 			#long = 25.473395
@@ -216,8 +237,8 @@ class GraffitiWebSocket(WebSocket):
 			
 		def move():
 			
-			avatarEntity = tundra.Scene().MainCameraScene().GetEntityByName("Avatar1").get() # + str(msg['data']['user'])).get()
-				
+			#GraffitiWebSocket.avatarEntity = tundra.Scene().MainCameraScene().GetEntityByName("Bot").get() # + str(msg['data']['user'])).get()
+			avatarEntity = tundra.Scene().MainCameraScene().GetEntityByName("Bot").get()	
 			#length = len(msg['data']['localizations'])
 			#print length
 			#lat =  msg['data']['localizations'][length-1]['lat']
@@ -227,26 +248,58 @@ class GraffitiWebSocket(WebSocket):
 			lat2 = lat
 			lon2 = lon
 				
-			latitudeInMeters = haversine.calcLat(lat1, lat2)
-			longitudeInMeters = haversine.calcLong(lon1, lon2, lat1, lat2)
-	
-			GraffitiWebSocket.relativeLon = longitudeInMeters - avatarEntity.placeable.Position().z()
-			GraffitiWebSocket.relativeLat = latitudeInMeters - avatarEntity.placeable.Position().x()
+			GraffitiWebSocket.latitudeInMeters = haversine.calcLat(lat1, lat2)
+			GraffitiWebSocket.longitudeInMeters = haversine.calcLong(lon1, lon2, lat1, lat2)
+			distanceInMeters = haversine.distance(lat1, lat2, lon1, lon2)
+			
+			print 'Distance in meters' , distanceInMeters
+			
+			#print longitudeInMeters, latitudeInMeters
+			#
+			#if GraffitiWebSocket.latitudeInMeters < distanceInMeters:
+			#	relativeAngle = math.acos(GraffitiWebSocket.latitudeInMeters/distanceInMeters)
+			#else:
+			#	relativeAngle = math.acos(distanceInMeters/GraffitiWebSocket.latitudeInMeters)
+			
+			#relativeAngle is the angle that is made from the distance vector and the vector made by z. This way we could move
+			#the right angle, if the SetRotation commands would work, which they do not. Tested via python console.
+			#rotationAngle = avatarEntity.placeable.transform.SetRot(0,relativeAngle,0)
+			lonOrientation = GraffitiWebSocket.longitudeInMeters - avatarEntity.placeable.Position().z()
+			latOrientation = GraffitiWebSocket.latitudeInMeters - avatarEntity.placeable.Position().x()
+			
+			GraffitiWebSocket.relativeLon = math.fabs(lonOrientation)
+			GraffitiWebSocket.relativeLat = math.fabs(latOrientation)
+			
+		
+			
+			if lonOrientation >= 0 and latOrientation >= 0:
+				GraffitiWebSocket.orientation = "ne"
+			elif  lonOrientation < 0 and latOrientation < 0:
+				GraffitiWebSocket.orientation = "sw"
+			elif lonOrientation < 0 and latOrientation >= 0:
+				GraffitiWebSocket.orientation = "nw"
+			elif  lonOrientation >= 0 and latOrientation < 0:
+				GraffitiWebSocket.orientation = "se"
+			
+			print GraffitiWebSocket.orientation
+			
 			GraffitiWebSocket.walk = True
-			#walking = True
-			ac = avatarEntity.animationcontroller
+			walking = True
+
 			#ac.animationState = GraffitiWebSocket.walkAnimName
-			avatarEntity.animationcontroller.EnableAnimation(u'Walk' , True, 0.25, True)
-			print avatarEntity.animationcontroller.GetAvailableAnimations()
-			if GraffitiWebSocket.relativeLat > GraffitiWebSocket.relativeLon:
-				GraffitiWebSocket.ratioLon = GraffitiWebSocket.relativeLat / GraffitiWebSocket.relativeLon
+			#animName = avatarEntity.animationcontroller.animationState
+			#print avatarEntity.animationcontroller.IsAnimationActive(animName)
+		
+		
+			if GraffitiWebSocket.relativeLat >= GraffitiWebSocket.relativeLon:
+				GraffitiWebSocket.ratioLon = GraffitiWebSocket.relativeLon / GraffitiWebSocket.relativeLat
 				GraffitiWebSocket.ratioLat = 1
 				
 			else: #GraffitiWebSocket.relativeLon > GraffitiWebSocket.relativeLat:
-				GraffitiWebSocket.ratioLat = GraffitiWebSocket.relativeLon / GraffitiWebSocket.relativeLat
+				GraffitiWebSocket.ratioLat = GraffitiWebSocket.relativeLat / GraffitiWebSocket.relativeLon
 				GraffitiWebSocket.ratioLon = 1
-			
-			
+			print GraffitiWebSocket.ratioLat , GraffitiWebSocket.ratioLon
+				
 			#print 'New longitude is %r' % relativeLon
 			#print 'New latitude is %r' % relativeLat
 			
