@@ -25,7 +25,6 @@ def distance(lat1, lat2, lon1, lon2):
 	
 
 def calcLong(lon1, lon2, lat1, lat2):
-	print 'Haversine lats and lons %r' , lat1, lat2, lon1, lon2
 	radius = 6371 # km
 	
 	dlat = 0
