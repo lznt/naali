@@ -36,8 +36,6 @@ def calcLong(lon1, lon2, lat1, lat2):
 	
 	longitudeInMeters = d * 1000
 	
-	
-	
 	return longitudeInMeters
 
 	

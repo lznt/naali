@@ -1,0 +1,29 @@
+from numpy import *
+
+def assignMatrix():
+	A = ASEMAKTORIK = array([65.014685,25.471802])
+	B = ASEMAKKIRKK = array([65.014172,25.473626])
+	C = ASEMAKISOK = array([65.013642,25.475589])
+	D = ASEMAKUUSIK = array([65.013117,25.477477])
+	E = TORIKHALLIK = array([65.013955,25.470729])
+	F = KIRKKOKHALLIK = array([65.013484,25.472564])
+	G = KIRKKOKHALLIK2 = array([65.013212,25.472209])
+	H = ISOKHALLIK = array([65.012691,25.474184])
+	I = TORIKPAKKAHK = array([65.013185,25.469527])
+	J = KIRKKOKPAKKAHK = array([65.01265,25.471405])
+	K = ISOKPAKKAHK = array([65.012124,25.473433])
+	L = UUSIKPAKKAHK = array([65.011607,25.475353])
+	M = TORIKKAUPPURIK = array([65.01231,25.468261])
+	N = KIRKKOKKAUPPURIK = array([65.011798,25.470171])
+	O = ISOKKAUPPURIK = array([65.011267,25.472134])
+	P = UUSIKKAUPPURIK = array([65.010742,25.474119])
+	
+	#Matrix 17x17
+	allPoints = array([A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P])
+	Matrix = matrix(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P)
+	#Matrix.shape = (17,17)
+	#allPoints( (17,17) )
+	print Matrix[:]
+	print allPoints
+	
+	

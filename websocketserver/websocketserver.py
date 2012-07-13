@@ -13,6 +13,7 @@ from PythonQt.QtGui import QQuaternion as Quat
 
 import haversine
 import tundra
+import AssignMatrix
 #import move
 
 clients = set()
@@ -133,58 +134,7 @@ def onEntityRemoved(entity, changeType):
     print "Removing", entity
     sendAll(['removeEntity', {'id': entity.id}])
 
-#def moveUpdate(t):
-	#	speed = 1.6
-	#	time = t
-	#	lats = speed * time * GraffitiWebSocket.ratioLat
-	#	lons = speed * time * GraffitiWebSocket.ratioLon
-	#	avatarEntity = tundra.Scene().MainCameraScene().GetEntityByName("Bot" + str(msg['data']['_id'])).get()
-	#
-	#	yy = avatarEntity.placeable.Position().y()
-	#	xx = avatarEntity.placeable.Position().x()
-	#	zz = avatarEntity.placeable.Position().z()
-		
-		#if newDistance < relativeLon:
-		#	relativeAngle = math.degrees(math.acos(newDistance/relativeLon))
-		#else:
-		#	relativeAngle = math.degrees(math.acos(relativeLon/newDistance))
-		#print relativeAngle, newDistance
-		
-	#	if relativeLon >= 0:
-	#		summedPositionx = xx + lons
-	#	else:
-	#		summedPositionx = xx - lons
-	#	
-	#	if relativeLat >= 0:
-	#		summedPositionz = zz + lats
-	#	else:	
-	#		summedPositionz = zz - lats
-		
-		
-	#	orien = avatarEntity.placeable.Orientation()
-	#	angle = orien.FromEulerZYX(0,angle,0)
-	#	avatarEntity.placeable.SetOrientation(angle)
-		
-		
-		#print 'Positionxz are' , summedPositionz, summedPositionx
-		
-	#	GraffitiWebSocket.totalLat = GraffitiWebSocket.totalLat + lats
-	#	GraffitiWebSocket.totalLon = GraffitiWebSocket.totalLon + lons	
-		
-		
-		#print totalLat, totalLon, relativeLat, relativeLon
-		#avatarEntity.animationcontroller.SetAnimationSpeed(walkAnimName, 0.60)
-		#avatarEntity.animationcontroller.EnableAnimation(walkAnimName , True, 0.25, True)
-	#	avatarEntity.placeable.SetPosition(summedPositionx,yy,summedPositionz)
 
-		#Muista kokeilla and ehdolla
-		#
-	#	if totalLat > math.fabs(relativeLat) or totalLon > math.fabs(relativeLon):
-	#		GraffitiWebSocket.walk = False
-	#		avatarEntity.animationcontroller.DisableAllAnimations()
-	#		print 'Reached end of moveUpdate()'
-		
-			
 class GraffitiWebSocket(WebSocket):
 
 	walk = False
@@ -199,7 +149,27 @@ class GraffitiWebSocket(WebSocket):
 	ratioLat = 0
 	ratioLon = 0
 	angle = 0
-
+	PoliceId = 1
+	Ac = [65.014685,25.471802]
+	Bc = [65.014172,25.473626]
+	Cc = [65.013642,25.475589]
+	Dc = [65.013117,25.477477]
+	Ec = [65.013955,25.470729]
+	Fc = [65.013484,25.472564]
+	Gc = [65.013212,25.472209]
+	Hc = [65.012691,25.474184]
+	Ic = [65.013185,25.469527]
+	Jc = [65.01265,25.471405]
+	Kc = [65.012124,25.473433]
+	Lc = [65.011607,25.475353]
+	Mc = [65.01231,25.468261]
+	Nc = [65.011798,25.470171]
+	Oc = [65.011267,25.472134]
+	Pc = [65.010742,25.474119]
+	
+	positions = [Ac, Bc, Cc, Dc, Ec, Fc,
+				Gc, Hc, Ic, Jc, Kc, Lc,
+				Mc, Nc, Oc, Pc]
 	
 	def opened(self):
 		print "Websocket client connected"
@@ -217,7 +187,7 @@ class GraffitiWebSocket(WebSocket):
 		#lon1 = 25.468476
 		
 		def add():
-			
+			#In final version visible after the first move.
 			print "Player Added"
 			avatarEntity =  tundra.Scene().MainCameraScene().CreateEntity(scene.NextFreeId(), ["EC_Placeable","EC_DynamicComponent", "EC_AnimationController", "EC_Mesh", "EC_RigidBody", "EC_Avatar", "EC_Script"]).get()
 			avatarEntity.SetTemporary(True)
@@ -231,13 +201,24 @@ class GraffitiWebSocket(WebSocket):
 			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'ifToWalk')
 			avatarEntity.dynamiccomponent.CreateAttribute('float3', 'totals')
 			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'reset')
-		
-				
 			#avatarEntity.avatar.appearanceRef.setRef("default_avatar.avatar")
 			avatarEntity.script.className = "BotScriptApp.BotScript"
 			#Approx 0 on oulu3d
 			#long = 25.473395
 			#lat = 65.012124
+			
+		def addPolice():
+			#Some sort of counter to determine how many polices are added (if not static)
+			policeEntity = tundra.Scene().MainCameraScene().CreateEntity(scene.NextFreeId(),["EC_Placeable", "EC_DynamicComponent", "EC_AnimationController", "EC_Mesh", "EC_RigidBody", "EC_Avatar", "EC_Script"]).get()
+			policeEntity.SetTemporary(True)
+			policeEntity.placeable.visible = True
+			policeEntity.dynamiccomponent.CreateAttribute('int', 'curPos')
+			policeEntity.SetName("Bot_Police")
+			#GraffitiWebSocket.PoliceId + 1
+			policeEntity.rigidbody.mass = 0
+			#Comment this away if setting from js
+			policeEntity.placeable.SetPosition(-52.75, -4, -284.97)
+			policeEntity.script.className = "PoliceScriptApp.PoliceScript"
 
 			
 		def move():
@@ -265,10 +246,6 @@ class GraffitiWebSocket(WebSocket):
 				longitudeInMeters = -longitudeInMeters
 			if dlat > 0:
 				latitudeInMeters = -latitudeInMeters
-				
-			#print 'dlats:', dlat, dlon
-			#print 'ending latitudes', latitudeInMeters, avatarEntity.placeable.Position().z()
-			#print 'ending longitudes', longitudeInMeters, avatarEntity.placeable.Position().x()
 
 			relativeLon = longitudeInMeters - avatarEntity.placeable.Position().x()
 			relativeLat = latitudeInMeters - avatarEntity.placeable.Position().z()
@@ -281,26 +258,24 @@ class GraffitiWebSocket(WebSocket):
 			else: #relativeLon > relativeLat:
 				ratioLat = math.fabs(relativeLat / relativeLon)
 				ratioLon = 1
-			#print relativeLat, relativeLon
+				
 			##Send relatives and angle to dynamiccomponent
-			
 			toMoves = avatarEntity.dynamiccomponent.GetAttribute('toMoves')
 			toMoves.setx(relativeLon)
 			toMoves.sety(relativeLat)
-			#print 'In python', toMoves.x(), toMoves.y()
 			avatarEntity.dynamiccomponent.SetAttribute('toMoves', toMoves)
+			
 			angleOfOrientation = avatarEntity.dynamiccomponent.GetAttribute('angleOfOrientation')
 			angleOfOrientation.sety(math.atan2(relativeLat, relativeLon))
 			avatarEntity.dynamiccomponent.SetAttribute('angleOfOrientation', angleOfOrientation)
-			##print 'Sent'
+
 			
 			##Send ratios to dynamiccomponents	
-			
 			ratios = avatarEntity.dynamiccomponent.GetAttribute('ratios')
 			ratios.setx(ratioLon)
 			ratios.sety(ratioLat)
 			avatarEntity.dynamiccomponent.SetAttribute('ratios', ratios)
-			##print 'Sent'
+
 			
 			##In case that move() is called before the movement ends, set total's to 0
 			totals = avatarEntity.dynamiccomponent.GetAttribute('totals')
@@ -313,11 +288,9 @@ class GraffitiWebSocket(WebSocket):
 			avatarEntity.dynamiccomponent.SetAttribute('reset', reset)
 			
 			##Send walk
-			
 			toWalk = avatarEntity.dynamiccomponent.GetAttribute('ifToWalk')
 			toWalk = True
 			avatarEntity.dynamiccomponent.SetAttribute('ifToWalk', toWalk)
-			#spray()
 			##sent
 			
 		
@@ -326,7 +299,8 @@ class GraffitiWebSocket(WebSocket):
 			#Currently manipulating always 'screen', in future we can change all this by some identification.
 			avatarEntity = tundra.Scene().MainCameraScene().GetEntityByName("Bot" + str(msg['data']['_id'])).get()
 			name = msg['data']['_id']
-			#The lousy variable to decide the destiny of our screen. Currently can only use 1 screen, since we insert stuff to screen by name			
+			#The lousy variable to decide the destiny of our screen. Currently can only use 1 screen, since we insert stuff to screen by name
+			
 			if name == 'str':
 				screen = tundra.Scene().MainCameraScene().GetEntityByName("Galleria_Screen").get()
 				screenvalues = screen.dynamiccomponent.GetAttribute('screenvalues')
@@ -357,18 +331,11 @@ class GraffitiWebSocket(WebSocket):
 			ifToSpray = screen.dynamiccomponent.GetAttribute('ifSprayed')
 			ifToSprayed = True
 			screen.dynamiccomponent.SetAttribute('ifSprayed', ifToSprayed)
-			
-			#ac.animationState = walkAnimName
-			#animName = avatarEntity.animationcontroller.animationState
-			#print avatarEntity.animationcontroller.IsAnimationActive(animName)
-				
-			#print 'New longitude is %r' % relativeLon
-			#print 'New latitude is %r' % relativeLat
-		
-		
 		
 			#In here we get the msg from server, that tells which team has painted, and sends the variable to
 			#dynamiccomponent where its fetched by TeamMaterials.js and then used.
+		
+		
 	
 		#print "Websocket message received:"
 		
@@ -380,7 +347,7 @@ class GraffitiWebSocket(WebSocket):
 
 			
 			
-		actions = { "addMobileUser" : add, "movedUser" : move, "sprayGraffiti" : spray}
+		actions = { "addMobileUser" : add, "movedUser" : move, "sprayGraffiti" : spray, "addPolice" : addPolice}
 
 		actions[msg['action']]()      
 
