@@ -150,26 +150,6 @@ class GraffitiWebSocket(WebSocket):
 	ratioLon = 0
 	angle = 0
 	PoliceId = 1
-	Ac = [65.014685,25.471802]
-	Bc = [65.014172,25.473626]
-	Cc = [65.013642,25.475589]
-	Dc = [65.013117,25.477477]
-	Ec = [65.013955,25.470729]
-	Fc = [65.013484,25.472564]
-	Gc = [65.013212,25.472209]
-	Hc = [65.012691,25.474184]
-	Ic = [65.013185,25.469527]
-	Jc = [65.01265,25.471405]
-	Kc = [65.012124,25.473433]
-	Lc = [65.011607,25.475353]
-	Mc = [65.01231,25.468261]
-	Nc = [65.011798,25.470171]
-	Oc = [65.011267,25.472134]
-	Pc = [65.010742,25.474119]
-	
-	positions = [Ac, Bc, Cc, Dc, Ec, Fc,
-				Gc, Hc, Ic, Jc, Kc, Lc,
-				Mc, Nc, Oc, Pc]
 	
 	def opened(self):
 		print "Websocket client connected"
@@ -211,13 +191,12 @@ class GraffitiWebSocket(WebSocket):
 			#Some sort of counter to determine how many polices are added (if not static)
 			policeEntity = tundra.Scene().MainCameraScene().CreateEntity(scene.NextFreeId(),["EC_Placeable", "EC_DynamicComponent", "EC_AnimationController", "EC_Mesh", "EC_RigidBody", "EC_Avatar", "EC_Script"]).get()
 			policeEntity.SetTemporary(True)
-			policeEntity.placeable.visible = True
+			policeEntity.placeable.visible = False
 			policeEntity.dynamiccomponent.CreateAttribute('int', 'curPos')
 			policeEntity.SetName("Bot_Police")
 			#GraffitiWebSocket.PoliceId + 1
 			policeEntity.rigidbody.mass = 0
-			#Comment this away if setting from js
-			policeEntity.placeable.SetPosition(-52.75, -4, -284.97)
+			policeEntity.placeable.SetPosition(0, -4, 0)
 			policeEntity.script.className = "PoliceScriptApp.PoliceScript"
 
 			
@@ -269,7 +248,6 @@ class GraffitiWebSocket(WebSocket):
 			angleOfOrientation.sety(math.atan2(relativeLat, relativeLon))
 			avatarEntity.dynamiccomponent.SetAttribute('angleOfOrientation', angleOfOrientation)
 
-			
 			##Send ratios to dynamiccomponents	
 			ratios = avatarEntity.dynamiccomponent.GetAttribute('ratios')
 			ratios.setx(ratioLon)
