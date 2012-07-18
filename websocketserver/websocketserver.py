@@ -182,9 +182,15 @@ class GraffitiWebSocket(WebSocket):
 			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'busted')
 			avatarEntity.dynamiccomponent.CreateAttribute('float3', 'totals')
 			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'reset')
+			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'Spraying')
+			#Need to add some value to check players team and set it after that.
+			avatarEntity.dynamiccomponent.CreateAttribute('string', 'Team')
+			avatarEntity.dynamiccomponent.CreateAttribute('string', 'Role')
+			avatarEntity.dynamiccomponent.SetAttribute('Role', 'Player')
 			#avatarEntity.avatar.appearanceRef.setRef("default_avatar.avatar")
 			avatarEntity.script.className = "BotScriptApp.BotScript"
 			#C2.className = "BotAndPoliceApp.BotAndPolice"
+			avatarEntity.dynamiccomponent.SetAttribute('Team', str(msg['data']['team']))
 			
 			#Approx 0 on oulu3d
 			#long = 25.473395
@@ -199,6 +205,8 @@ class GraffitiWebSocket(WebSocket):
 			#GraffitiWebSocket.PoliceId + 1
 			policeEntity.rigidbody.mass = 0
 			#policeEntity.placeable.SetPosition(0, -4, 0)
+			policeEntity.dynamiccomponent.CreateAttribute('string', 'Role')
+			policeEntity.dynamiccomponent.SetAttribute('Role', 'Police')
 			policeEntity.script.className = "PoliceScriptApp.PoliceScript"
 
 			
@@ -271,7 +279,6 @@ class GraffitiWebSocket(WebSocket):
 			toWalk = avatarEntity.dynamiccomponent.GetAttribute('ifToWalk')
 			toWalk = True
 			avatarEntity.dynamiccomponent.SetAttribute('ifToWalk', toWalk)
-			avatarEntity.SetAttribute('busted', False)
 			##sent
 			
 		
@@ -279,39 +286,9 @@ class GraffitiWebSocket(WebSocket):
 			#Need to add some id for screens, to identify at this stage that which screen is being used.
 			#Currently manipulating always 'screen', in future we can change all this by some identification.
 			avatarEntity = tundra.Scene().MainCameraScene().GetEntityByName("Bot" + str(msg['data']['_id'])).get()
+			avatarEntity.dynamiccomponent.SetAttribute('Spraying', True)
 			name = msg['data']['_id']
 			#The lousy variable to decide the destiny of our screen. Currently can only use 1 screen, since we insert stuff to screen by name
-			
-			if name == 'str':
-				screen = tundra.Scene().MainCameraScene().GetEntityByName("Galleria_Screen").get()
-				screenvalues = screen.dynamiccomponent.GetAttribute('screenvalues')
-				screenvalues.setx(1)
-				screenvalues.sety(0)
-				screenvalues.setz(0)
-				screen.dynamiccomponent.SetAttribute('screenvalues', screenvalues)
-			elif name == 'st':
-				screen = tundra.Scene().MainCameraScene().GetEntityByName("Puistola_Screen").get()
-				screenvalues = screen.dynamiccomponent.GetAttribute('screenvalues')
-				screenvalues.setx(0)
-				screenvalues.sety(1)
-				screenvalues.setz(0)
-				screen.dynamiccomponent.SetAttribute('screenvalues', screenvalues)
-			else:
-				screen = tundra.Scene().MainCameraScene().GetEntityByName("Galleria_Screen").get()
-				screenvalues = screen.dynamiccomponent.GetAttribute('screenvalues')
-				screenvalues.setx(0)
-				screenvalues.sety(0)
-				screenvalues.setz(1)
-				screen.dynamiccomponent.SetAttribute('screenvalues', screenvalues)
-			
-			particle = tundra.Scene().MainCameraScene().GetEntityByName('Puistola_Spray').get()
-			ifToSprayPar = particle.dynamiccomponent.GetAttribute('ifSprayedPar')
-			ifToSprayPar = True
-			particle.dynamiccomponent.SetAttribute('ifSprayedPar', ifToSprayPar)
-			
-			ifToSpray = screen.dynamiccomponent.GetAttribute('ifSprayed')
-			ifToSprayed = True
-			screen.dynamiccomponent.SetAttribute('ifSprayed', ifToSprayed)
 		
 			#In here we get the msg from server, that tells which team has painted, and sends the variable to
 			#dynamiccomponent where its fetched by TeamMaterials.js and then used.
