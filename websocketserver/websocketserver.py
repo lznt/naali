@@ -179,10 +179,13 @@ class GraffitiWebSocket(WebSocket):
 			avatarEntity.dynamiccomponent.CreateAttribute('float3', 'toMoves')
 			avatarEntity.dynamiccomponent.CreateAttribute('float3', 'angleOfOrientation')
 			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'ifToWalk')
+			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'busted')
 			avatarEntity.dynamiccomponent.CreateAttribute('float3', 'totals')
 			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'reset')
 			#avatarEntity.avatar.appearanceRef.setRef("default_avatar.avatar")
 			avatarEntity.script.className = "BotScriptApp.BotScript"
+			#C2.className = "BotAndPoliceApp.BotAndPolice"
+			
 			#Approx 0 on oulu3d
 			#long = 25.473395
 			#lat = 65.012124
@@ -192,11 +195,10 @@ class GraffitiWebSocket(WebSocket):
 			policeEntity = tundra.Scene().MainCameraScene().CreateEntity(scene.NextFreeId(),["EC_Placeable", "EC_DynamicComponent", "EC_AnimationController", "EC_Mesh", "EC_RigidBody", "EC_Avatar", "EC_Script"]).get()
 			policeEntity.SetTemporary(True)
 			policeEntity.placeable.visible = False
-			policeEntity.dynamiccomponent.CreateAttribute('int', 'curPos')
 			policeEntity.SetName("Bot_Police")
 			#GraffitiWebSocket.PoliceId + 1
 			policeEntity.rigidbody.mass = 0
-			policeEntity.placeable.SetPosition(0, -4, 0)
+			#policeEntity.placeable.SetPosition(0, -4, 0)
 			policeEntity.script.className = "PoliceScriptApp.PoliceScript"
 
 			
@@ -269,6 +271,7 @@ class GraffitiWebSocket(WebSocket):
 			toWalk = avatarEntity.dynamiccomponent.GetAttribute('ifToWalk')
 			toWalk = True
 			avatarEntity.dynamiccomponent.SetAttribute('ifToWalk', toWalk)
+			avatarEntity.SetAttribute('busted', False)
 			##sent
 			
 		
