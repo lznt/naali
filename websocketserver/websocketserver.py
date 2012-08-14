@@ -18,7 +18,7 @@ import AssignMatrix
 
 clients = set()
 connections = dict()
-
+counter = 1
 
 scene = None
 
@@ -28,7 +28,7 @@ def log(s):
 def newclient(connectionid):
     if scene is not None:
         tundra.Server().UserConnected(connectionid, 0, 0)
-        avent = scene.GetEntityByNameRaw("Avatar" + str(connectionid))
+        avent = scene.CreateEntity("EC_Avatar", 'EC_DynamicComponent')
         return avent.id
 
     else:
@@ -38,12 +38,15 @@ def removeclient(connectionid):
     tundra.Server().UserDisconnected(connectionid, 0)
 
 def on_sceneadded(name):
-    '''Connects to various signal when scene is added'''
-    global scene
-    sceneapi = tundra.Scene()
-    scene = sceneapi.GetScene(name).get() #*Raw
-    print "Using scene:", scene.name, scene
-
+	'''Connects to various signal when scene is added'''
+	global scene
+	sceneapi = tundra.Scene()
+	scene = sceneapi.GetScene(name).get() #*Raw
+	
+	print "Using scene:", scene.name, scene
+	
+	#server.UserDisconnected().connect(this.ServerHandleUserDisconnected)
+	
     #assert scene.connect("AttributeChanged(IComponent*, IAttribute*, AttributeChange::Type)", onAttributeChanged)
     #assert scene.connect("EntityCreated(Entity*, AttributeChange::Type)", onNewEntity)
 
@@ -56,6 +59,10 @@ def update(t):
 	if server is not None:
 		#server.next()
 		server._stopped_event.wait(timeout=0.0001)
+		if GraffitiWebSocket.ReadyWatcher == False:
+			setScriptOnLoad()
+			
+		#tundra.Server().UserDisconnected.connect(this.ServerHandleUserDisconnected)
 		#print 'smth'
 		#This functionality makes sure that we send msg's only when a player has been busted. Sends the players name to server.
 		#Server then messages the player for being busted.
@@ -64,12 +71,16 @@ def update(t):
 			if Logic.dynamiccomponent.GetAttribute('Busted') == True:
 				player = Logic.dynamiccomponent.GetAttribute('PlayerName')
 				sendAll({"action" : "busted" , "data":{"user": {"name" : player}}})
-		#Here attanch someday the messagesender to phone.
-		#print '.',
-		#def on_exit(self):
-		# Need to figure something out what to do and how
-		#if walk == True:
-		#moveUpdate(t)
+
+def setScriptOnLoad():
+	logic = tundra.Scene().MainCameraScene().GetEntityByName("Logic").get()
+	while(logic == None):
+		print 'none'
+	#logic.CreateComponent('Script')
+	#logic.script.className = 'WatcherApp.WatcherEntity'
+	GraffitiWebSocket.ReadyWatcher = True
+	
+
 		
 def sendAll(data):
 	for client in clients:
@@ -81,6 +92,7 @@ def sendAll(data):
 
 
 class GraffitiWebSocket(WebSocket):
+	
 	
 	walk = False
 	avatarEntity = None
@@ -99,6 +111,7 @@ class GraffitiWebSocket(WebSocket):
 	Ready = False
 	Logic = None
 	Busted = False
+	ReadyWatcher = False
 	
 	def opened(self):
 		print "Websocket client connected"
@@ -115,7 +128,7 @@ class GraffitiWebSocket(WebSocket):
 		lon1 = 25.473395
 		#lat1 = 65.058325
 		#lon1 = 25.468476
-		
+	
 		def add():
 			#In final version visible after the first move.
 			print "Player Added"
@@ -140,15 +153,17 @@ class GraffitiWebSocket(WebSocket):
 			avatarEntity.dynamiccomponent.CreateAttribute('string', 'Role')
 			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'rdyToSpray')
 			avatarEntity.dynamiccomponent.SetAttribute('Role', 'Player')
-			#avatarEntity.avatar.appearanceRef.setRef("default_avatar.avatar")
 			avatarEntity.script.className = "BotScriptApp.BotScript"
-			#C2.className = "BotAndPoliceApp.BotAndPolice"
 			avatarEntity.dynamiccomponent.SetAttribute('Team', str(msg['data']['user']['team']))
+			log = tundra.Scene().MainCameraScene().GetEntityByName('Logic').get()
+			log.dynamiccomponent.SetAttribute('addedPlayer', True)
 			GraffitiWebSocket.Ready = True
 			#Approx 0 on oulu3d
 			#long = 25.473395
 			#lat = 65.012124
-			
+		
+		
+		
 		def addPolice():
 			#Some sort of counter to determine how many polices are added (if not static)
 			policeEntity = tundra.Scene().MainCameraScene().CreateEntity(scene.NextFreeId(),["EC_Placeable", "EC_DynamicComponent", "EC_AnimationController", "EC_Mesh", "EC_RigidBody", "EC_Avatar", "EC_Script"]).get()
@@ -161,7 +176,6 @@ class GraffitiWebSocket(WebSocket):
 			policeEntity.dynamiccomponent.CreateAttribute('bool', 'Spraying')
 			Logic = tundra.Scene().MainCameraScene().GetEntityByName('Logic')
 			policeEntity.script.className = "PoliceScriptApp.PoliceScript"
-
 			
 		def move():
 			
@@ -234,6 +248,7 @@ class GraffitiWebSocket(WebSocket):
 			##sent
 			
 		
+		
 		def spray():
 			#Get spraying player, sprayed venue and particleEffect for that venue.
 			avatarEntity = tundra.Scene().MainCameraScene().GetEntityByName(str(msg['data']['user']['name'])).get()
@@ -293,7 +308,7 @@ if tundra.Server().IsAboutToStart():
 	server.start()
 	print "websocket server started."
 	assert tundra.Frame().connect("Updated(float)", update)
-
+	
 	                            
 	sceneapi = tundra.Scene()
 	
