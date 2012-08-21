@@ -7,7 +7,6 @@ import time
 import ws4py.server.geventserver
 from ws4py.websocket import WebSocket
 
-
 from PythonQt.QtGui import QVector3D as Vec3
 from PythonQt.QtGui import QQuaternion as Quat
 
@@ -54,16 +53,14 @@ def on_sceneadded(name):
 
     #assert scene.connect("EntityRemoved(Entity*, AttributeChange::Type)", onEntityRemoved)
 
-    
+#This is the update function that runs on every frametime on realXtend side.
 def update(t):
 	if server is not None:
 		#server.next()
 		server._stopped_event.wait(timeout=0.0001)
 		if GraffitiWebSocket.ReadyWatcher == False:
 			setScriptOnLoad()
-			
-		#tundra.Server().UserDisconnected.connect(this.ServerHandleUserDisconnected)
-		#print 'smth'
+		
 		#This functionality makes sure that we send msg's only when a player has been busted. Sends the players name to server.
 		#Server then messages the player for being busted.
 		if GraffitiWebSocket.Ready == True:
@@ -71,17 +68,21 @@ def update(t):
 			if Logic.dynamiccomponent.GetAttribute('Busted') == True:
 				player = Logic.dynamiccomponent.GetAttribute('PlayerName')
 				sendAll({"action" : "busted" , "data":{"user": {"name" : player}}})
+			if Logic.dynamiccomponent.GetAttribute('newMsg') == True:
+				#Add send to server here
+				#sendAll(Logic.dynamiccomponent.GetAttribute('msg'))
+				Logic.dynamiccomponent.SetAttribute('newMsg', False)
 
+#Currently an empty function, made for checking that if entities are yet created
 def setScriptOnLoad():
 	logic = tundra.Scene().MainCameraScene().GetEntityByName("Logic").get()
 	while(logic == None):
 		print 'none'
-	#logic.CreateComponent('Script')
-	#logic.script.className = 'WatcherApp.WatcherEntity'
+	
 	GraffitiWebSocket.ReadyWatcher = True
 	
 
-		
+#Function that sends the server an msg
 def sendAll(data):
 	for client in clients:
 		try:
@@ -92,43 +93,41 @@ def sendAll(data):
 
 
 class GraffitiWebSocket(WebSocket):
-	
-	
-	walk = False
+	#Variables:
+	'''
+	avatarEntity = avatarentity variable to save the avatar in.
+	relativeLat, relativeLon = The actual distances to be walked. (Calculated with haversine)
+	Ready = to check that a player has been added before running a if in update. Otherwise entity will be None and rex will crash
+	Logic = Logic entity
+	ReadyWatcher = for onScriptLoad function to know that the scene is ready and we can enter the function.
+	'''
 	avatarEntity = None
-	police = None
-	policeId = 0
 	relativeLat = 0
 	relativeLon = 0
-	totalLat = 0
-	totalLon = 0
-	latitudeInMeters = 0
-	longitudeInMeters = 0
-	distanceInMeters = 0
-	ratioLat = 0
-	ratioLon = 0
-	angle = 0
 	Ready = False
 	Logic = None
-	Busted = False
 	ReadyWatcher = False
 	
 	def opened(self):
 		print "Websocket client connected"
 		#self.send('Websocket client connected')
 		clients.add(self)
-		
+
+	#Function for received messages from server
 	def received_message(self, message):
 		"""
 		Automatically sends back the provided ``message`` to
 		its originating endpoint.
 		"""
 		print(message)
+		##Static values for 0,0,0 in our map in real world coordinates.
 		lat1 = 65.012124
 		lon1 = 25.473395
 		#lat1 = 65.058325
 		#lon1 = 25.468476
 	
+		#This is the add function that adds a new player when a phone is connected to a server and sends this msg. Includes all needed attributes 
+		#to run scripts and make checks, logicwise. 
 		def add():
 			#In final version visible after the first move.
 			print "Player Added"
@@ -139,61 +138,82 @@ class GraffitiWebSocket(WebSocket):
 			avatarEntity.SetName(str(msg['data']['user']['name']))
 			avatarEntity.rigidbody.mass = 0
 			avatarEntity.placeable.SetPosition(0, -4, 0)
+			#For attachments in botscript
+			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'attachments')
+			#Ratios for x and z in movement
 			avatarEntity.dynamiccomponent.CreateAttribute('float3', 'ratios')
+			#RelativeLat and Lon(the actual movement of z and x)
 			avatarEntity.dynamiccomponent.CreateAttribute('float3', 'toMoves')
+			#The angle that the player needs to turn when going somewhere
 			avatarEntity.dynamiccomponent.CreateAttribute('float3', 'angleOfOrientation')
+			#a dynamic value to know of the player is able to walk(is not busted or doing something else)
 			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'ifToWalk')
+			#a dynamic value to know if the player is busted.
 			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'Busted')
+			#totalLat and Lon for the script. These are always 0 at start
 			avatarEntity.dynamiccomponent.CreateAttribute('float3', 'totals')
+			#A reset value for knowing that the move() has been called
 			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'reset')
+			#Spraying dynamiccomponent to know if a player is spraying
 			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'Spraying')
 			avatarEntity.dynamiccomponent.SetAttribute('Spraying', False)
 			#Need to add some value to check players team and set it after that.
 			avatarEntity.dynamiccomponent.CreateAttribute('string', 'Team')
+			#The role of the entity(NOT USED CURRENTLY)
 			avatarEntity.dynamiccomponent.CreateAttribute('string', 'Role')
+			#A dynamic value to know if the player is ready to spray.
 			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'rdyToSpray')
 			avatarEntity.dynamiccomponent.SetAttribute('Role', 'Player')
 			avatarEntity.script.className = "BotScriptApp.BotScript"
 			avatarEntity.dynamiccomponent.SetAttribute('Team', str(msg['data']['user']['team']))
 			log = tundra.Scene().MainCameraScene().GetEntityByName('Logic').get()
 			log.dynamiccomponent.SetAttribute('addedPlayer', True)
+			log.dynamiccomponent.SetAttribute('newSocketPlayer', True)
+			log.dynamiccomponent.CreateAttribute('string', 'Player')
+			log.dynamiccomponent.SetAttribute('Player', avatarEntity.name)
+			log.dynamiccomponent.CreateAttribute('bool', 'newMsg')
+			log.dynamiccomponent.CreateAttribute('string', 'msg')
 			GraffitiWebSocket.Ready = True
+
 			#Approx 0 on oulu3d
 			#long = 25.473395
 			#lat = 65.012124
 		
 		
-		
+		#This function adds policebots to our scene.
 		def addPolice():
 			#Some sort of counter to determine how many polices are added (if not static)
-			policeEntity = tundra.Scene().MainCameraScene().CreateEntity(scene.NextFreeId(),["EC_Placeable", "EC_DynamicComponent", "EC_AnimationController", "EC_Mesh", "EC_RigidBody", "EC_Avatar", "EC_Script"]).get()
+			policeEntity = tundra.Scene().MainCameraScene().CreateEntity(scene.NextFreeId(),["EC_Placeable", "EC_DynamicComponent", "EC_AnimationController", "EC_Mesh", "EC_RigidBody", "EC_Avatar"]).get()
 			policeEntity.SetTemporary(True)
+			policeEntity.GetOrCreateComponent("EC_Script", 'Police')
 			policeEntity.placeable.visible = False
 			policeEntity.SetName("Police")
-			#GraffitiWebSocket.PoliceId + 1
 			policeEntity.rigidbody.mass = 0
 			#policeEntity.placeable.SetPosition(0, -4, 0)
 			policeEntity.dynamiccomponent.CreateAttribute('bool', 'Spraying')
+			#For attachments in botscript
+			policeEntity.dynamiccomponent.CreateAttribute('bool', 'attachments')
+			#Attachment naem to distinguish them
+			policeEntity.dynamiccomponent.CreateAttribute('string', 'attachmentname');
+			policeEntity.dynamiccomponent.SetAttribute('attachmentname', policeEntity.Id())
 			Logic = tundra.Scene().MainCameraScene().GetEntityByName('Logic')
 			policeEntity.script.className = "PoliceScriptApp.PoliceScript"
-			
+
+		#This is the move function, same principle is used in policemen and in spray, in this we calculate in Python, others in JS. So see
+		#for different ways to do it. Haversine.py does the calculations in this one.
 		def move():
-			
 			avatarEntity = tundra.Scene().MainCameraScene().GetEntityByName(str(msg['data']['user']['name'])).get()
 			lat =  msg['data']['localization']['lat']
 			lon =  msg['data']['localization']['lon']
-			#print lat, lon
-			#print lat1, lon1
-			#lat = msg['data']['lat']
-			#lon = msg['data']['lon']
 			lat2 = lat
 			lon2 = lon
 			speed = 1.6
-			##Call haversine to calculate lat, lon and distance##
+			
+			#Call haversine to calculate lat, lon and distance
 			latitudeInMeters = haversine.calcLat(lat1, lat2)
 			longitudeInMeters = haversine.calcLong(lon1, lon2, lat1, lat2)
 			GraffitiWebSocket.distanceInMeters = haversine.distance(lat1, lat2, lon1, lon2)
-			
+			#to know in which quad we are in.
 			dlon = lon2 - lon1
 			dlat = lat2 - lat1
 			
@@ -248,7 +268,7 @@ class GraffitiWebSocket(WebSocket):
 			##sent
 			
 		
-		
+		#The spray function when a player sprays in game.
 		def spray():
 			#Get spraying player, sprayed venue and particleEffect for that venue.
 			avatarEntity = tundra.Scene().MainCameraScene().GetEntityByName(str(msg['data']['user']['name'])).get()
@@ -256,11 +276,15 @@ class GraffitiWebSocket(WebSocket):
 			particle = tundra.Scene().MainCameraScene().GetEntityByName(str(msg['data']['venue']['name']) + "spray").get()
 			Logic = tundra.Scene().MainCameraScene().GetEntityByName('Logic').get()
 			id = Logic.dynamiccomponent.GetAttribute('id')
-			
+			#The particle that needs to spray.
 			particleName = (str(msg['data']['venue']['name']) + "spray")
+			#The screen that we are spraying(screens are spots that players spray in)
 			screenName = str(msg['data']['venue']['name'])
+			#Team of the player spraying.
 			team = avatarEntity.dynamiccomponent.GetAttribute('Team')
+			#Players current position
 			playerPos = screen.dynamiccomponent.GetAttribute('playerPos')
+			#Particles position, cos that is the place where the player moves when spraying.
 			particlePos = avatarEntity.dynamiccomponent.GetAttribute('particlePos')
 			#Set player current position, to use them to calculate distance from area.
 			curPosx = avatarEntity.placeable.Position().x()
@@ -297,7 +321,7 @@ class GraffitiWebSocket(WebSocket):
 		
 
 			
-			
+		#Actions in game.
 		actions = { "add" : add, "move" : move, "spray" : spray, "addPolice" : addPolice}
 
 		actions[msg['action']]()      
