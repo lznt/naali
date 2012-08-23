@@ -12,8 +12,8 @@ from PythonQt.QtGui import QQuaternion as Quat
 
 import haversine
 import tundra
-import AssignMatrix
-#import move
+
+
 
 clients = set()
 connections = dict()
@@ -61,19 +61,43 @@ def update(t):
 		if GraffitiWebSocket.ReadyWatcher == False:
 			setScriptOnLoad()
 		
-		#This functionality makes sure that we send msg's only when a player has been busted. Sends the players name to server.
-		#Server then messages the player for being busted.
+		#When a private message is sent to phone, this happens.	BUG: GetEntitiesWithComponent can't be used to distinguish players
+		#from each other. Atleast not for now. WORKAROUND: use GetEntityidsWithComponent and create all players a component that is unique(EC_OgreCustomObject).
+		#Logic below. 
+		#TODO: Add the sendAll messages as soon as server has the JSON message receiver for them.
 		if GraffitiWebSocket.Ready == True:
 			Logic = tundra.Scene().MainCameraScene().GetEntityByName("Logic").get()
+			Players = tundra.Scene().MainCameraScene().GetEntityIdsWithComponent('EC_OgreCustomObject')
+			for i in range(len(Players)):
+				id = Players[i]
+				en = tundra.Scene().MainCameraScene().GetEntity(Players[i]).get()
+				if en.dynamiccomponent.GetAttribute('newMsg') == True:
+					##Send a msg for the phone
+					#sendAll(en.dynamiccomponent.GetAttribute('msg'))
+					print en.dynamiccomponent.GetAttribute('msg')
+					en.dynamiccomponent.SetAttribute('newMsg', False)
+
+				if en.dynamiccomponent.GetAttribute('disconnected') == True:
+					if en.dynamiccomponent.GetAttribute('Connections') == False:
+						tundra.Scene().MainCameraScene().RemoveEntity(en.Id())
+				
+				if en.dynamiccomponent.GetAttribute('sprayFinished') == True:
+					player = en.name
+					#sendAll(player)
+					##Send a msg for the phone that spraying has been finished.
+
+
+			#This functionality makes sure that we send msg's only when a player has been busted. Sends the players name to server.
+			#Server then messages the player for being busted.
 			if Logic.dynamiccomponent.GetAttribute('Busted') == True:
 				player = Logic.dynamiccomponent.GetAttribute('PlayerName')
 				sendAll({"action" : "busted" , "data":{"user": {"name" : player}}})
-			if Logic.dynamiccomponent.GetAttribute('newMsg') == True:
-				#Add send to server here
-				#sendAll(Logic.dynamiccomponent.GetAttribute('msg'))
-				Logic.dynamiccomponent.SetAttribute('newMsg', False)
+			
+			
+			
 
 #Currently an empty function, made for checking that if entities are yet created
+#Prevents update function from failing.
 def setScriptOnLoad():
 	logic = tundra.Scene().MainCameraScene().GetEntityByName("Logic").get()
 	while(logic == None):
@@ -123,15 +147,13 @@ class GraffitiWebSocket(WebSocket):
 		##Static values for 0,0,0 in our map in real world coordinates.
 		lat1 = 65.012124
 		lon1 = 25.473395
-		#lat1 = 65.058325
-		#lon1 = 25.468476
 	
 		#This is the add function that adds a new player when a phone is connected to a server and sends this msg. Includes all needed attributes 
 		#to run scripts and make checks, logicwise. 
 		def add():
 			#In final version visible after the first move.
 			print "Player Added"
-			avatarEntity =  tundra.Scene().MainCameraScene().CreateEntity(scene.NextFreeId(), ["EC_Placeable","EC_DynamicComponent", "EC_AnimationController", "EC_Mesh", "EC_RigidBody", "EC_Avatar"]).get()
+			avatarEntity =  tundra.Scene().MainCameraScene().CreateEntity(scene.NextFreeId(), ["EC_OgreCustomObject", "EC_Placeable","EC_DynamicComponent", "EC_AnimationController", "EC_Mesh", "EC_RigidBody", "EC_Avatar"]).get()
 			avatarEntity.SetTemporary(True)
 			avatarEntity.GetOrCreateComponent("EC_Script", 'Player')
 			avatarEntity.placeable.visible = True
@@ -166,19 +188,30 @@ class GraffitiWebSocket(WebSocket):
 			avatarEntity.dynamiccomponent.SetAttribute('Role', 'Player')
 			avatarEntity.script.className = "BotScriptApp.BotScript"
 			avatarEntity.dynamiccomponent.SetAttribute('Team', str(msg['data']['user']['team']))
+			#DyCo disconnected is needed for the ChatApplication to know which player has closed the mobile app.
+			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'disconnected')
+			#Creating everything needed for the Logic entity.
 			log = tundra.Scene().MainCameraScene().GetEntityByName('Logic').get()
-			log.dynamiccomponent.SetAttribute('addedPlayer', True)
-			log.dynamiccomponent.SetAttribute('newSocketPlayer', True)
-			log.dynamiccomponent.CreateAttribute('string', 'Player')
-			log.dynamiccomponent.SetAttribute('Player', avatarEntity.name)
-			log.dynamiccomponent.CreateAttribute('bool', 'newMsg')
-			log.dynamiccomponent.CreateAttribute('string', 'msg')
+			#If player is added.
+			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'addedPlayer')
+			avatarEntity.dynamiccomponent.SetAttribute('addedPlayer', True)
+			#If a new socket player is connected, needed for chat.
+			avatarEntity.dynamiccomponent.CreateAttribute('bool','newSocketPlayer')
+			avatarEntity.dynamiccomponent.SetAttribute('newSocketPlayer', True)
+			#newMsg is a boolean that tells wether an private message has been sent to the phone. Needed for the update function.
+			#msg is the msg that we send. Currently it has msgtype+sender+msg form. Can be changed in ChatApplication.js
+			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'newMsg')
+			avatarEntity.dynamiccomponent.CreateAttribute('string', 'msg')
 			GraffitiWebSocket.Ready = True
 
 			#Approx 0 on oulu3d
 			#long = 25.473395
 			#lat = 65.012124
 		
+		#This function is launched when Mobile closes the application, we need the players name as a msg.
+		def remove():
+			player = tundra.Scene().MainCameraScene().GetEntityByName(str(msg['data']['user']['name'])).get()
+			player.dynamiccomponent.SetAttribute('disconnected', True)
 		
 		#This function adds policebots to our scene.
 		def addPolice():
@@ -297,6 +330,7 @@ class GraffitiWebSocket(WebSocket):
 			particlePos.setx(particlePosx)
 			particlePos.setz(particlePosz)
 			#Set all needed information for dynamiccomponents, so that scripts can use them.
+			#Names are pretty self explaining.
 			screen.dynamiccomponent.SetAttribute('screenName', str(msg['data']['venue']['name']))
 			screen.dynamiccomponent.SetAttribute('playerPos', playerPos)
 			screen.dynamiccomponent.SetAttribute('PlayerId', str(msg['data']['user']['name']))
@@ -322,7 +356,7 @@ class GraffitiWebSocket(WebSocket):
 
 			
 		#Actions in game.
-		actions = { "add" : add, "move" : move, "spray" : spray, "addPolice" : addPolice}
+		actions = { "add" : add, "move" : move, "spray" : spray, "addPolice" : addPolice, "remove" : remove}
 
 		actions[msg['action']]()      
 
