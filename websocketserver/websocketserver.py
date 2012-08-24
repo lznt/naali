@@ -147,7 +147,15 @@ class GraffitiWebSocket(WebSocket):
 		##Static values for 0,0,0 in our map in real world coordinates.
 		lat1 = 65.012124
 		lon1 = 25.473395
-	
+		
+		#Function for msg's coming through phone.
+		def phoneMsg():
+			avatarEntity = tundra.Scene().MainCameraScene().GetEntityByName(str(msg['data']['user']['name'])).get()
+			#Something like this? So you tell in the json message the players name and the msg.
+			avatarEntity.dynamiccomponent.SetAttribute('privMsg', True)
+			#Theserver needs to send an actual msg
+			#avatarEntity.dynamiccomponent.SetAttribute('privmsg', 'Sendernamehere' + ": " + str(msg['msg']['user']['msg']))
+		
 		#This is the add function that adds a new player when a phone is connected to a server and sends this msg. Includes all needed attributes 
 		#to run scripts and make checks, logicwise. 
 		def add():
@@ -202,6 +210,8 @@ class GraffitiWebSocket(WebSocket):
 			#msg is the msg that we send. Currently it has msgtype+sender+msg form. Can be changed in ChatApplication.js
 			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'newMsg')
 			avatarEntity.dynamiccomponent.CreateAttribute('string', 'msg')
+			avatarEntity.dynamiccomponent.CreateAttribute('bool', 'privMsg')
+			avatarEntity.dynamiccomponent.CreateAttribute('string', 'privmsg')
 			GraffitiWebSocket.Ready = True
 
 			#Approx 0 on oulu3d
@@ -356,7 +366,7 @@ class GraffitiWebSocket(WebSocket):
 
 			
 		#Actions in game.
-		actions = { "add" : add, "move" : move, "spray" : spray, "addPolice" : addPolice, "remove" : remove}
+		actions = { "add" : add, "move" : move, "spray" : spray, "addPolice" : addPolice, "remove" : remove, "phoneMsg" : phoneMsg}
 
 		actions[msg['action']]()      
 
